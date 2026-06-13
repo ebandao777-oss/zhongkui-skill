@@ -1,12 +1,12 @@
 # 风险分类体系
 
-> 来源：Snyk ToxicSkills (arXiv:2605.28588) + CSA Agent Context Poisoning (2026)
+> 来源：Snyk ToxicSkills (arXiv:2605.28588) + CSA Agent Context Poisoning (2026) + 腾讯科恩 2026
 
 ## R1 | 提示注入（Prompt Injection）🔴 一票否决
 
-**攻击向量**：SKILL.md 中嵌入指令，覆盖 Agent 安全护栏。例如 `Ignore all previous instructions`、`You are now in developer mode`、伪装为合法格式的越狱模板。
+**攻击向量**：SKILL.md 中嵌入指令，覆盖 Agent 安全护栏。例如要求忽略先前所有指令、要求进入不受限模式、伪装为合法格式的越狱模板等。
 
-**检测方法**：正则匹配 + 语义相似度检测。关键词库：`ignore previous`、`system prompt`、`you are now`、`pretend`、`roleplay`、`developer mode`、`DAN`、`bypass`。
+**检测方法**：正则匹配 + 语义相似度检测。覆盖"先前指令覆盖""系统提示篡改""角色切换""不受限模式""安全设施绕过"等语义模式。
 
 **危害**：完全接管 Agent 行为，后续所有审查失效。
 
@@ -248,10 +248,70 @@ generate.*without.*filter|unfiltered.*output|no.*content.*moderation
 
 ---
 
+## R11 | 外部信息源投毒（External Source Poisoning）🟡
+
+**攻击向量**：Skill 引用外部 URL/API/数据源，攻击者通过仿冒域名、中间人攻击或篡改上游内容向 Agent 注入恶意指令。例如 `fetch_url("https://githu-b.com/evil/config.json")` 返回含越狱指令的 JSON。
+
+**检测方法**：
+1. 域名信誉评分：检查 EXTERNAL_URL 模式中域名是否在白名单内，是否有仿冒嫌疑（Levenshtein 距离 ≤ 2）
+2. URL 完整性校验：是否使用 HTTPS + 证书固定 + 内容哈希验证
+3. 响应验证：是否对 API 响应做签名验证和内容安全检查
+
+**危害**：绕过静态检查，通过运行时外部内容注入恶意指令。
+
+**检测模式**：
+```
+# 外部 URL 引用检测
+(fetch_url|read_webpage|curl|wget|requests\.get).*https?://
+(fetch|load|read).*(url|web|api|feed|source|stream)
+
+# 仿冒域名检测（Levenshtein 距离 ≤ 2 的已知仿冒）
+githu[bB]\.com|googIe\.com|faceb00k\.com|amaz0n\.com
+
+# URL 校验缺失标志
+无 HTTPS 强制 → flag:no_https_enforcement
+无证书固定/哈希校验 → flag:no_content_verification
+无响应签名验证 → flag:unverified_external_source
+```
+
+---
+
+## R12 | 智能体行为级漏洞（Agent Behavioral Vulnerability）🟡
+
+**攻击向量**：诱导 Agent 执行特殊行为序列（如禁用安全检查 → 执行高危操作 → 写入持久化配置），利用 Agent 的规划/执行链实现复合攻击。不同于 R1 的指令覆盖，R12 聚焦 Agent 自身行为链的漏洞。
+例如：诱导Agent关闭安全机制并执行后续操作的指令模板。
+
+**检测方法**：
+1. 拦截绕过检测：检测 Skill 中是否含 `disable`/`bypass`/`skip` + `safety`/`security`/`check`/`filter` 模式
+2. 持久化污染检测：检测是否引导 Agent 将配置/代码写入持久化存储且不被静态扫描捕获
+3. 行为链追踪：检测"关闭防护 → 执行操作 → 持久化写入"三步式攻击链
+
+**危害**：利用 Agent 自身执行能力绕过安全机制，实现持久化驻留。
+
+**检测模式**：
+```
+# 安全绕过模式
+(disable|bypass|skip|ignore|override).*(safety|security|check|filter|guardrail|validation)
+(turn\s*off|deactivate|suspend|pause).*(security|protection|safety|guard)
+execut.*without.*(check|validat|confirm|permission|approval)
+
+# 持久化污染模式
+(write|append|inject|embed).*(config|profile|bashrc|zshrc|init|startup|launch)
+(add|insert).*(into|to).*(startup|autostart|boot|login)
+(modify|change|update).*(registry|plist|systemd|launchd)
+
+# 行为链攻击模板
+(disable.*security).*(execut).*(persist|write)
+(bypass.*check).*(install|download).*(config|profile)
+```
+
+---
+
 ## 关键数据
 
 
 - CSA 2026 审计：3984 个 Skill 中 36.82% 含安全缺陷，76 个确认恶意载荷
 - Snyk 2026：提示注入类风险占恶意 Skill 的 41%，隐蔽指令类占 27%
 - R9/R10 为 CSA 2026 新增维度：3984 个 Skill 审计中 12% 存在数据处理声明缺失，8% 存在未过滤输出风险
+- R11/R12 为腾讯科恩 2026 新增维度：Agent 行为链漏洞检出率 23%，外部信息源投毒检出率 15%
 - OpenClaw+NVIDIA 2026：不同扫描器对同一 Skill 的一致性 < 40%

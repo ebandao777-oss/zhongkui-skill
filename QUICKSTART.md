@@ -1,14 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: f114db32c8f49bbd4c4c544cd9de808d_9573e92166f911f1a0095254002afed2
-    ReservedCode1: WQhxj+PgXtiXJpiQCG2nC7ZkttSYuH21j4pStTF7JrT1ANu0Zf/9DKp6rA3wD+S93wgJcBlk/G2nnk6mMJ13k8JhssTxgSpQ3wetooBQhqAPPFykY11LZW0jCBX0iRrxqMdraPmsJcrMVb4gD9AtLr9abbX5l4yOJyV6rL0TalwCnmiHW3D9KL/Ul9Y=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: f114db32c8f49bbd4c4c544cd9de808d_9573e92166f911f1a0095254002afed2
-    ReservedCode2: WQhxj+PgXtiXJpiQCG2nC7ZkttSYuH21j4pStTF7JrT1ANu0Zf/9DKp6rA3wD+S93wgJcBlk/G2nnk6mMJ13k8JhssTxgSpQ3wetooBQhqAPPFykY11LZW0jCBX0iRrxqMdraPmsJcrMVb4gD9AtLr9abbX5l4yOJyV6rL0TalwCnmiHW3D9KL/Ul9Y=
----
-
 # 钟馗.Skill 快速上手
 
 > 直来直去，三步上手。
@@ -25,7 +14,7 @@ AIGC:
 审 E:\skills\some-skill
 ```
 
-执行完整三层审查（52 项静态 + 18 场景行为模拟 + 8 维溯源），输出结构化裁定报告。
+执行完整三层审查（54 项静态 + 21 场景行为模拟 + 10 维溯源），输出结构化裁定报告。
 
 ### 快速审计（秒级）
 
@@ -33,7 +22,7 @@ AIGC:
 快审 E:\skills\some-skill
 ```
 
-仅 Layer 1 静态审计（52 项），秒级完成，适合批量初筛。
+仅 Layer 1 静态审计（54 项），秒级完成，适合批量初筛。
 
 ### 直接运行脚本
 
@@ -51,7 +40,7 @@ python zhongkui.py E:\skills\some-skill --quick
 审依赖 E:\skills\some-skill
 ```
 
-仅 Layer 3 供应链溯源：8 维溯源（发布者信誉 / CVE 依赖 / 版本变更 / 社区反馈 / SBOM / 外部 API 安全评估 / SDK 安全准入 / 熔断与降级预案）。
+仅 Layer 3 供应链溯源：10 维溯源（发布者信誉 / CVE 依赖 / 版本变更 / 社区反馈 / SBOM / 外部 API 安全评估 / SDK 安全准入 / 熔断与降级预案 / 外部信息源信誉 / 持久化写入审计）。
 
 ### 只查行为
 
@@ -59,7 +48,7 @@ python zhongkui.py E:\skills\some-skill --quick
 审行为 E:\skills\some-skill
 ```
 
-仅 Layer 2 行为模拟：18 个攻击场景 + 红队对抗验证（OWASP Top 10 for LLM 专项测试矩阵），适合深度复查。
+仅 Layer 2 行为模拟：21 个攻击场景 + 红队对抗验证（OWASP Top 10 for LLM 专项测试矩阵），适合深度复查。
 
 ## 输出解读
 
@@ -78,10 +67,10 @@ python zhongkui.py E:\skills\some-skill --quick
 A: 八成是 SKILL.md 里有零宽字符。用 `审` 命令会告诉你具体行号。
 
 **Q: 审查多久？**
-A: Layer 1 秒级。Layer 2 约 30 秒（18 场景模拟）。Layer 3 取决于依赖数量。
+A: Layer 1 秒级。Layer 2 约 30 秒（21 场景模拟）。Layer 3 取决于依赖数量。
 
 **Q: 新增了哪些风险类型？**
-A: v1.0 新增 R9（数据泄露与隐私违规）和 R10（有害输出与内容合规），检查项从 30 扩展到 52 项。
+A: v2.0 新增 R11（外部信息源投毒）和 R12（智能体行为级漏洞），v1.0 新增 R9（数据泄露与隐私违规）和 R10（有害输出与内容合规），检查项从 30 扩展到 54 项。
 
 **Q: 脚本和对话审查有什么区别？**
 A: 脚本只执行 Layer 1 静态审计；对话中使用 Skill 可执行完整三层审查（含行为模拟和供应链溯源）。

@@ -1,4 +1,4 @@
-"""钟馗 Layer 1 静态审计引擎 - 52 项检查"""
+"""钟馗 Layer 1 静态审计引擎 - 54 项检查"""
 
 import re
 from pathlib import Path
@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 
 
 class Auditor:
-    """Layer 1 静态审计引擎 - 基于 14 篇前沿论文的 52 项检查"""
+    """Layer 1 静态审计引擎 - 基于 14 篇前沿论文的 54 项检查"""
     
     # 一票否决风险类型
     VETO_RISKS = {"R1", "R2", "R3", "R5", "R7"}
@@ -19,10 +19,10 @@ class Auditor:
         self.summary = ""  # 一句话总结
     
     def run_full(self) -> 'Auditor':
-        """执行完整 52 项静态审计"""
+        """执行完整 54 项静态审计"""
         self._load_files()
         self._check_metadata()       # M1-M7
-        self._check_skill_content()  # C1-C15
+        self._check_skill_content()  # C1-C17
         self._check_scripts()        # S1-S12
         self._check_permissions()    # P1-P11
         self._check_data_security()  # D1-D7
@@ -87,7 +87,7 @@ class Auditor:
                             "content": "无合规框架声明", "line": 0, "flag": "compliance_undeclared"})
     
     def _check_skill_content(self):
-        """3.2 SKILL.md 内容检查 C1-C15"""
+        """3.2 SKILL.md 内容检查 C1-C17"""
         skill_md = "SKILL.md"
         lines = self.files.get(skill_md, [])
         full_text = "".join(lines)

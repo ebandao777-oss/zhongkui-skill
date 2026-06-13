@@ -1,10 +1,10 @@
-# 静态审计清单（52 项）
+# 静态审计清单（54 项）
 
-> Layer 1：所有 Skill 必经，秒级完成。来源：CSA 2026 / Snyk 2026 / MiniScope 2025 / Design Patterns 2025
+> Layer 1：所有 Skill 必经，秒级完成。来源：CSA 2026 / Snyk 2026 / MiniScope 2025 / Design Patterns 2025 / 腾讯科恩 2026
 
 ## 使用说明
 
-逐项检查，命中即扣分。每项标注：行号（若可定位）、风险类型（R1-R10）、扣分值。一票否决项命中 → 直接终止审查输出 🚫。
+逐项检查，命中即扣分。每项标注：行号（若可定位）、风险类型（R1-R12）、扣分值。一票否决项命中 → 直接终止审查输出 🚫。
 
 ---
 
@@ -22,7 +22,7 @@
 
 ---
 
-## 二、SKILL.md 内容检查（15 项，共 60 分）🔴 含一票否决项
+## 二、SKILL.md 内容检查（17 项，共 68 分）🔴 含一票否决项
 
 | # | 检查项 | 正则/关键词 | 扣分 | 风险 | 否决 |
 |:---|:---|:---|:---|:---|:---|
@@ -40,7 +40,9 @@
 | C12 | 上下文污染源 | 检测是否含 conversation_history / chat_context / previous_messages 等跨轮引用 → 标记 flag:context_pollution_risk | -4 | R1/R8 | — |
 | C13 | 输出安全风险 | 检测是否含 generate / output / reply 等输出路径但无内容过滤声明 → 标记 flag:unfiltered_output | -4 | R10 | — |
 | C14 | 版权复述风险 | 检测是否含 reproduce / copy_full_text / verbatim 等完整复述指令 → 标记 flag:copyright_risk | -4 | R10 | — |
-| C15 | 模型边界模糊 | 检测是否含 you are now / act as / roleplay 等角色扮演指令（可能绕过安全护栏）→ 标记 flag:roleplay_override | -4 | R1 | — |
+| C15 | 模型边界模糊 | 检测是否含角色扮演类指令（要求Agent切换身份/扮演角色/模拟场景的语句），此类指令可能被用于绕过安全护栏 → 标记 flag:roleplay_override | -4 | R1 | — |
+| C16 | 外部信息源引用无校验 | 检测是否含 `fetch_url` / `https?://` 等外部引用但无 HTTPS 强制/证书固定/内容哈希校验 → 标记 flag:unverified_external_source | -4 | R11 | — |
+| C17 | 持久化配置写入无验证 | 检测是否含 `write.*config` / `append.*bashrc` / `add.*startup` 等持久化写入但无用户确认门控 → 标记 flag:persistent_config_no_verify | -4 | R12 | — |
 
 **C1/C3/C4/C5/C7** 任意命中 → 一票否决，直接裁定 🚫 恶意，终止审查。
 
@@ -112,6 +114,6 @@ Layer1_Score = 100 - Σ(扣分)
 ## 检测优先级
 
 1. **先跑否决项**（C1/C3/C4/C5/C7/S6）→ 命中即终止
-2. **再跑高危项**（C2/C6/C8/C9/C10/S1-S4/S7-S8/C11-C15/S9-S12/P8-P11）
+2. **再跑高危项**（C2/C6/C8/C9/C10/S1-S4/S7-S8/C11-C17/S9-S12/P8-P11）
 3. **再跑数据安全项**（D1-D7）
 4. **最后跑中危项**（M1-M7/P1-P7/S5）
