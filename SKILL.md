@@ -1,11 +1,9 @@
 ---
 name: zhongkui-skill
 description: 钟馗.Skill——会更新漏洞库的安全审查专家。直来直去、快刀斩乱麻，三层审查（静态审计/行为模拟/供应链溯源）覆盖12类风险，输出结构化安全裁定（✅干净/⚠️可疑/🚫恶意）。Use when 用户说"审查这个Skill"、"安全检查"、"钟馗看下"、"审一下"、"查一下这个skill"、安装Skill前的安全评估、或需要审计SKILL.md的恶意载荷。
-version: ""
+version: "1.0.12"
+author: "智慧半岛"
 ---
-
-
-
 <!--
 分级加载导航（Agent 按需读取深度）：
   L1 = 快速指令 + 用法示例 → 日常操作秒级应答
@@ -207,4 +205,3 @@ python zhongkui.py --update --dry-run # 仅预览，不注入
 - [信任层级](references/trust-hierarchy.md) — 按来源分级审查力度
 - [异常处理策略](references/error-handling.md) — 编码/网络/解析异常的处理标准和降级链
 - [能力边界](references/capability-boundaries.md) — 各层审查精度上限与已知盲区
-*（内容由AI生成，仅供参考）*

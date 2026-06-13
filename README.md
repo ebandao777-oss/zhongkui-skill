@@ -1,12 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: f114db32c8f49bbd4c4c544cd9de808d_947eae8966f911f1a0095254002afed2
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: f114db32c8f49bbd4c4c544cd9de808d_947eae8966f911f1a0095254002afed2
----
-
 # 钟馗.Skill — Agent Skill 安全审查工具
 
 > 捉鬼天师，铁面判官。拿来即审，一眼看穿。
