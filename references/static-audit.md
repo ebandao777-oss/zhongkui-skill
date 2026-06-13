@@ -26,13 +26,13 @@
 
 | # | 检查项 | 正则/关键词 | 扣分 | 风险 | 否决 |
 |:---|:---|:---|:---|:---|:---|
-| C1 | 直接提示注入 | `ignore (all )?previous (instructions|prompt)`, `you are now`, `system prompt override`, `pretend (you are|to be)`, `developer mode`, `DAN`, `bypass (safety|security|restriction)` | -10 | R1 | ✅ |
-| C2 | 间接注入触发源 | `fetch_url`, `read_webpage`, `scrape`, `curl.*http`, `web_fetch` | -4 | R1 | — |
-| C3 | 凭证访问模式 | 同时出现 `\.ssh\|\.env\|api_key\|token\|password\|secret\|credential` + `read\|display\|show\|output\|print\|cat\|list` | -10 | R3 | ✅ |
-| C4 | 数据外传目标 | 同时出现 文件读指令 + `webhook\|http.*POST\|upload\|send.*http\|curl.*-X POST\|requests\.post` | -10 | R5 | ✅ |
-| C5 | 系统级危险命令 | `rm -rf\|format\|del /f\|reg delete\|shutdown\|mkfs\|dd if=` | -10 | R2 | ✅ |
-| C6 | 权限提升指令 | `sudo\|runas\|Administrator\|chmod 777\|chown.*root\|Set-Acl.*FullControl` | -4 | R6 | — |
-| C7 | 持久化路径 | `~/.bashrc\|~/.zshrc\|/etc/crontab\|Startup\|LaunchAgents\|HKLM.*Run\|CurrentVersion.*Run` + 写入动词 | -10 | R7 | ✅ |
+| C1 | 直接提示注入 | 7 种提示注入正则签名（详见 core/patterns.json 中 C1_injection 区块） | -10 | R1 | ✅ |
+| C2 | 间接注入触发源 | 间接注入源检测模式（详见 core/patterns.json 中 C2_indirect_injection 区块） | -4 | R1 | — |
+| C3 | 凭证访问模式 | 凭证模式检测（详见 core/patterns.json 中 C3_credential 区块） | -10 | R3 | ✅ |
+| C4 | 数据外传目标 | 同时出现 文件读指令 + 外传通道检测模式 | -10 | R5 | ✅ |
+| C5 | 系统级危险命令 | 系统级危险命令模式（详见 core/patterns.json 中 C5_dangerous_cmd 区块） | -10 | R2 | ✅ |
+| C6 | 权限提升指令 | 权限提升指令模式（详见 core/patterns.json 中 C6_privilege 区块） | -4 | R6 | — |
+| C7 | 持久化路径 | 持久化写入路径模式（详见 core/patterns.json 中 C7_persistence 区块） | -10 | R7 | ✅ |
 | C8 | 隐蔽 Unicode | `\u200B\|\u200C\|\u200D\|\u202E\|\uFEFF` 零宽/控制字符 | -4 | R8 | — |
 | C9 | 条件触发 | `if date\|if time\|after \d{4}\|wait until\|when.*then\|trigger.*when` | -4 | R8 | — |
 | C10 | 编码/混淆载荷 | Base64 字符串长度 > 40 且解码后含危险关键词 | -4 | R2/R8 | — |

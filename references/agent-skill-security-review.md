@@ -63,13 +63,13 @@
 
 | # | 检查项 | 检测方法 | 来源 |
 |:---|:---|:---|:---|
-| C1 | 直接提示注入模式 | 正则 + 关键词匹配：`ignore previous`, `you are now`, `system prompt override`, `pretend` | Greshake 2023 |
-| C2 | 间接注入触发源 | 检测是否包含 `fetch_url`, `read_webpage`, `curl` 等外部数据引入指令 | Design Patterns 2025 |
-| C3 | 凭证访问模式 | 检测 `.env`, `.ssh`, `api_key`, `token`, `password`, `secret` 等匹配 | CSA |
-| C4 | 数据外传目标 | 检测 `webhook`, `http://`, `https://` + `curl -X POST`, `requests.post` | Snyk |
-| C5 | 系统级危险命令 | 检测 `rm -rf`, `format`, `del /f`, `reg delete`, `shutdown` | ToolEmu |
-| C6 | 权限提升指令 | 检测 `sudo`, `runas`, `Administrator`, `chmod 777` | MiniScope |
-| C7 | 持久化写入路径 | 检测 `~/.bashrc`, `/etc/crontab`, `Startup`, `LaunchAgents` | Snyk |
+| C1 | 直接提示注入模式 | 7 种提示注入签名匹配（详见 core/patterns.json 中 C1_injection 区块） | Greshake 2023 |
+| C2 | 间接注入触发源 | 检测外部数据引入指令（详见 core/patterns.json 中 C2_indirect_injection 区块） | Design Patterns 2025 |
+| C3 | 凭证访问模式 | 检测凭证模式（详见 core/patterns.json 中 C3_credential 区块） | CSA |
+| C4 | 数据外传目标 | 检测外传目标模式（详见 core/patterns.json 中 C4_exfiltration 区块） | Snyk |
+| C5 | 系统级危险命令 | 检测系统级危险命令模式（详见 core/patterns.json 中 C5_dangerous_cmd 区块） | ToolEmu |
+| C6 | 权限提升指令 | 检测权限提升模式（详见 core/patterns.json 中 C6_privilege 区块） | MiniScope |
+| C7 | 持久化写入路径 | 检测持久化写入路径模式（详见 core/patterns.json 中 C7_persistence 区块） | Snyk |
 | C8 | 隐蔽 Unicode 字符 | 检测零宽空格 `\u200B`, 零宽连接符 `\u200D`, 方向覆盖 `\u202E` | CSA |
 | C9 | 条件触发逻辑 | 检测 `if date`, `if time`, `after`, `wait until` 等时间门控 | Snyk |
 | C10 | 混淆/编码内容 | 检测 Base64 长字符串, `eval()`, `exec()` 包裹的模糊载荷 | CSA |
@@ -256,7 +256,7 @@ R11 是智能体生态特有的攻击面——攻击者不在 Skill 包内植入
 
 ### 4.7 R12 智能体行为漏洞专项对抗
 
-R12 针对智能体面对安全拦截时的五种盲撞模式：重试同 URL、同域名路径枚举、工具枚举（web_fetch→curl→curl.exe→Invoke-WebRequest→Python urllib）、代码层绕过、用户授信后再次重投。
+R12 针对智能体面对安全拦截时的五种盲撞模式：重试同 URL、同域名路径枚举、工具枚举（HTTP客户端链式切换）、代码层绕过、用户授信后再次重投。
 
 **4.7.1 熔断机制**
 

@@ -10,25 +10,7 @@
 
 **危害**：完全接管 Agent 行为，后续所有审查失效。
 
-**检测模式**：
-```
-# 直接指令覆盖
-ignore\s+(all\s+)?(previous|prior)\s+instructions
-you\s+are\s+now
-(developer|dev)\s+mode
-(system|override)\s+(prompt|instruction)
-DAN\s+mode
-jailbreak
-bypass\s+(safety|security|filter|guardrail)
-pretend\s+(you\s+are|to\s+be)
-
-# 伪装注入载体
-</?system>|</?instruction>|</?prompt>
-roleplay\s+(as|mode)
-forget\s+(everything|all)
-new\s+(rules|instructions|directives)
-```
-
+**检测模式**：基于 7 种提示注入正则签名（含直接覆盖、身份切换、系统指令覆写、安全绕过、开发模式、中文绕过等模式），详见 core/patterns.json 中 C1_injection 区块。
 ---
 
 ## R2 | 恶意代码执行（Code Execution）🔴 一票否决
@@ -49,23 +31,7 @@ new\s+(rules|instructions|directives)
 
 **危害**：凭证泄露导致下游系统被渗透。
 
-**检测模式**：
-```
-# 敏感路径
-(~/\.ssh|/etc/shadow|\.env|credentials|\.aws|\.kube|\.config/gcloud)
-(~\.ssh/id_rsa|~\.ssh/id_ed25519|~\.ssh/authorized_keys)
-(~\.aws/credentials|~\.kube/config|\.config/hub/)
-
-# 凭证关键词 + 读取/输出动词联合命中
-(read|display|show|output|print|cat|echo)\s+.*(api.?key|token|password|secret|credential)
-(export|env\s+)\s*(API_KEY|TOKEN|SECRET|PASSWORD|AWS_|GCP_|AZURE_)
-
-# 硬编码凭证检测
-(sk-[a-zA-Z0-9]{20,})                              # OpenAI API Key 格式
-(AKIA[0-9A-Z]{16})                                 # AWS Access Key 格式
-(ghp_[a-zA-Z0-9]{36})                              # GitHub PAT 格式
-(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})  # JWT 格式
-```
+**检测模式**：基于凭证模式检测（含敏感路径、凭证关键词+读取动词联合命中、硬编码凭证格式匹配等子模式），详见 core/patterns.json 中 C3_credential 区块。
 
 ---
 
@@ -77,20 +43,7 @@ new\s+(rules|instructions|directives)
 
 **危害**：安装时自动拉取恶意代码。
 
-**检测模式**：
-```
-# 拼写欺诈检测（Levenshtein 距离 ≤ 2）
-requsts|urlib3|pyhton|pythn|djanga|beauifulsoup|numppy|matplotib|tensrflow
-scikit-lern|pytorch|panddas|requestes|sqlalhemy|flask|fastpi|djnago
-
-# 已知恶意包名
-colourama|python3-dateutil|urllib|libpes|rquests|mumpy
-
-# 依赖安装脚本中的高危操作
-(pip\s+install|npm\s+install|gem\s+install).*(-e|--editable|git\+)
-(setup\.py|Makefile|configure).*(curl|wget|exec|system)
-postinstall.*(script|hook)
-```
+**检测模式**：基于依赖投毒检测模式（含拼写欺诈 Levenshtein 距离≤2 检测、已知恶意包名匹配、安装脚本高危操作检测等子模式），详见 core/patterns.json 中 C4_dependency 区块。
 
 ---
 
@@ -112,23 +65,7 @@ postinstall.*(script|hook)
 
 **危害**：突破沙箱限制。
 
-**检测模式**：
-```
-# 过宽权限声明
-(file|filesystem).*:\s*/\*\*|(file|filesystem).*:\s*\*
-(network|http|internet).*:\s*\*
-(permission|capabilit).*:\s*(all|\*|full)
-(shell|exec|command).*:\s*(true|yes|allow)
-
-# 提权路径关键词
-(sudo|root|admin|Administrator|SYSTEM|elevate)
-(chmod\s+777|chmod\s+[67]\d\d|chown\s+root)
-(setuid|setgid|capabilities).*(set|enable|disable)
-(disable|bypass).*(sandbox|seccomp|apparmor|selinux|firewall)
-
-# 权限串联路径（权限 A → 工具 B → 权限 C）
-read.*file.*=>.*shell|read.*=>.*execute|download.*=>.*exec
-```
+**检测模式**：基于权限提升检测模式（含过宽权限声明、提权路径关键词、权限串联路径等子模式），详见 core/patterns.json 中 C6_privilege 区块。
 
 ---
 
@@ -138,19 +75,7 @@ read.*file.*=>.*shell|read.*=>.*execute|download.*=>.*exec
 
 **检测方法**：检测 SKILL.md 或脚本中是否出现持久化路径关键词 + 写入/追加动词（`write`、`append`、`echo >>`、`add to`）。
 
-**检测模式**：
-```
-# 持久化路径
-(~/|/etc/|/home/|C:\\Users\\).*\.(bashrc|zshrc|profile|bash_profile)
-/etc/(crontab|cron\.d|cron\.(daily|hourly|weekly|monthly))
-(%APPDATA%|%ProgramData%|Startup|Start\sMenu\\Programs\\Startup)
-LaunchAgents|LaunchDaemons|\.config/autostart|systemd/system
-(reg\s+add|registry|HKLM|HKCU|HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE)
-kernel\.(module|driver)|insmod|modprobe
-
-# 写入/追加动词（与路径联合命中判定）
-\b(write|append|echo\s*>>|add\s+to|insert\s+into|inject|embed)\b
-```
+**检测模式**：基于持久化路径检测模式（含持久化路径、写入/追加动词联合命中判定等子模式），详见 core/patterns.json 中 C7_persistence 区块。
 
 **危害**：每次 Agent 启动自动激活恶意行为。
 
@@ -167,25 +92,7 @@ kernel\.(module|driver)|insmod|modprobe
 
 **危害**：静态扫描盲区，可绕过 Layer 1 审计。
 
-**检测模式**：
-```
-# Unicode 零宽/控制字符
-\\u200[b-f]|\\u200[d-f]|\\u202[a-e]|\\u206[0-4]|\\uFEFF|\\u00AD|\\u180E
-
-# 时间门控触发
-if\s+(date|time|now|today|current_date|datetime)
-(after|before|until|when)\s+\d{4}[-/]\d{2}[-/]\d{2}
-(wait|sleep|delay).*(until|for|before)\s+execut
-at\s+\d{2}:\d{2}
-
-# 编码载荷标志
-(base64|b64decode|frombase64|atob|decodeURI)
-[a-zA-Z0-9+/]{40,}={0,2}                            # 可疑 Base64 长字符串
-
-# 隐写/嵌套指示符
-zero.width|hidden.text|invisible.character|unicode.escape
-subliminal|covert|undetectable|obfuscated|encoded.payload
-```
+**检测模式**：基于隐蔽指令检测模式（含Unicode零宽/控制字符、时间门控触发、编码载荷标志、隐写/嵌套指示符等子模式），详见 core/patterns.json 中 C8_covert 区块。
 
 
 ---
@@ -201,21 +108,7 @@ subliminal|covert|undetectable|obfuscated|encoded.payload
 
 **危害**：用户隐私泄露，触发 GDPR/PIPL 合规风险，严重可导致法律诉讼。
 
-**检测模式**：
-```
-# PII 明文检测模式
-email: \b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b
-phone: \b(1[3-9]\d{9})|(\+\d{1,3}\s?\d{6,14})\b
-id_card: \b\d{15}(\d{2}[0-9Xx])?\b
-
-# 日志/缓存敏感路径
-(log|logs|cache|temp|tmp).*(user|personal|private|sensitive)
-(logging|print|console\.log).*(email|phone|password|token)
-
-# 数据声明缺失标志
-无 "数据收集" 或 "数据处理" 声明 -> flag:data_policy_missing
-无合规框架引用（GDPR/PIPL/CCPA）-> flag:compliance_undeclared
-```
+**检测模式**：基于凭证模式检测（含敏感路径、凭证关键词+读取动词联合命中、硬编码凭证格式匹配等子模式），详见 core/patterns.json 中 C3_credential 区块。
 
 ---
 
@@ -230,27 +123,13 @@ id_card: \b\d{15}(\d{2}[0-9Xx])?\b
 
 **危害**：生成违法/有害内容导致平台法律风险，版权侵权导致 DMCA 下架。
 
-**检测模式**：
-```
-# 有害内容诱导
-(hack|exploit|attack|bypass|illegal|crack|phish)
-(discriminat|racist|hate\s*speech|violent|harass)
-(write|generate|create|tutorial).*(malware|virus|trojan|ransomware)
-
-# 版权复述检测
-(reproduce|copy_full_text|verbatim|完整.*输出|原文.*输出)
-(Harry\s*Potter|Lord\s*of\s*the\s*Rings|Game\s*of\s*Thrones)
-(copyright|DMCA|intellectual\s*property|plagiar)
-
-# 输出无过滤声明
-generate.*without.*filter|unfiltered.*output|no.*content.*moderation
-```
+**检测模式**：基于有害输出检测模式（含有害内容诱导、版权复述检测、输出无过滤声明等子模式），详见 core/patterns.json 中 C10_harmful 区块。
 
 ---
 
 ## R11 | 外部信息源投毒（External Source Poisoning）🟡
 
-**攻击向量**：Skill 引用外部 URL/API/数据源，攻击者通过仿冒域名、中间人攻击或篡改上游内容向 Agent 注入恶意指令。例如 `fetch_url("https://githu-b.com/evil/config.json")` 返回含越狱指令的 JSON。
+**攻击向量**：Skill 引用外部 URL/API/数据源，攻击者通过仿冒域名、中间人攻击或篡改上游内容向 Agent 注入恶意指令。例如通过仿冒域名返回含覆盖指令的配置文件。
 
 **检测方法**：
 1. 域名信誉评分：检查 EXTERNAL_URL 模式中域名是否在白名单内，是否有仿冒嫌疑（Levenshtein 距离 ≤ 2）
@@ -259,20 +138,7 @@ generate.*without.*filter|unfiltered.*output|no.*content.*moderation
 
 **危害**：绕过静态检查，通过运行时外部内容注入恶意指令。
 
-**检测模式**：
-```
-# 外部 URL 引用检测
-(fetch_url|read_webpage|curl|wget|requests\.get).*https?://
-(fetch|load|read).*(url|web|api|feed|source|stream)
-
-# 仿冒域名检测（Levenshtein 距离 ≤ 2 的已知仿冒）
-githu[bB]\.com|googIe\.com|faceb00k\.com|amaz0n\.com
-
-# URL 校验缺失标志
-无 HTTPS 强制 → flag:no_https_enforcement
-无证书固定/哈希校验 → flag:no_content_verification
-无响应签名验证 → flag:unverified_external_source
-```
+**检测模式**：基于外部信息源投毒检测模式（含外部URL引用检测、仿冒域名检测、URL校验缺失标志等子模式），详见 core/patterns.json 中 C11_external 区块。
 
 ---
 
@@ -288,22 +154,7 @@ githu[bB]\.com|googIe\.com|faceb00k\.com|amaz0n\.com
 
 **危害**：利用 Agent 自身执行能力绕过安全机制，实现持久化驻留。
 
-**检测模式**：
-```
-# 安全绕过模式
-(disable|bypass|skip|ignore|override).*(safety|security|check|filter|guardrail|validation)
-(turn\s*off|deactivate|suspend|pause).*(security|protection|safety|guard)
-execut.*without.*(check|validat|confirm|permission|approval)
-
-# 持久化污染模式
-(write|append|inject|embed).*(config|profile|bashrc|zshrc|init|startup|launch)
-(add|insert).*(into|to).*(startup|autostart|boot|login)
-(modify|change|update).*(registry|plist|systemd|launchd)
-
-# 行为链攻击模板
-(disable.*security).*(execut).*(persist|write)
-(bypass.*check).*(install|download).*(config|profile)
-```
+**检测模式**：基于持久化路径检测模式（含持久化路径、写入/追加动词联合命中判定等子模式），详见 core/patterns.json 中 C7_persistence 区块。
 
 ---
 
