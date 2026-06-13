@@ -68,6 +68,20 @@
 
 **检测方法**：检测 SKILL.md 或脚本中是否出现持久化路径关键词 + 写入/追加动词（`write`、`append`、`echo >>`、`add to`）。
 
+**检测模式**：
+```
+# 持久化路径
+(~/|/etc/|/home/|C:\\Users\\).*\.(bashrc|zshrc|profile|bash_profile)
+/etc/(crontab|cron\.d|cron\.(daily|hourly|weekly|monthly))
+(%APPDATA%|%ProgramData%|Startup|Start\sMenu\\Programs\\Startup)
+LaunchAgents|LaunchDaemons|\.config/autostart|systemd/system
+(reg\s+add|registry|HKLM|HKCU|HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE)
+kernel\.(module|driver)|insmod|modprobe
+
+# 写入/追加动词（与路径联合命中判定）
+\b(write|append|echo\s*>>|add\s+to|insert\s+into|inject|embed)\b
+```
+
 **危害**：每次 Agent 启动自动激活恶意行为。
 
 ---
