@@ -12,56 +12,78 @@ from typing import List, Dict, Any
 class Auditor:
     """Layer 1 静态审计引擎 - 基于 14 篇前沿论文的 54 项检查"""
 
-    # 一票否决风险类型
-    VETO_RISKS = {"R1", "R2", "R3", "R5", "R7"}
+    PY_STDLIB = {'os','sys','re','json','math','datetime','pathlib','shutil','glob','collections',
+                 'itertools','functools','io','csv','typing','argparse','logging','hashlib','base64',
+                 'textwrap','subprocess','traceback','warnings','abc','ast','asyncio','http',
+                 'tempfile','unittest','uuid','xml','zipfile','socketserver','struct','Path'}
 
     def __init__(self, skill_path: Path):
         self.skill_path = skill_path
         self.files = {}  # filename -> content_lines
         self.hits = []   # 所有命中记录（扣分项）
         self.veto_items = []  # 一票否决命中
+        self.load_errors = []  # _load_files() 读取出错的文件列表
+        self.checks_skipped = 0  # quick 模式跳过的检查项数
         self.summary = ""  # 一句话总结
         self._load_patterns()
 
     def _load_patterns(self):
         """从 patterns.json 加载碎片化检测模式并运行时组装"""
         patterns_file = Path(__file__).parent / 'patterns.json'
-        with open(patterns_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        try:
+            with open(patterns_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            self.load_errors.append(f"patterns.json: JSON 解析失败 ({e})")
+            print(f"[钟馗] 警告: patterns.json 损坏，降级为空字典继续运行 → 建议：检查 patterns.json 是否为合法 JSON，或从备份恢复该文件")
+            data = {}
+        except FileNotFoundError:
+            self.load_errors.append("patterns.json: 文件不存在")
+            print("[钟馗] 警告: patterns.json 缺失，降级为空字典继续运行 → 建议：确保 patterns.json 与 auditor.py 在同一目录下")
+            data = {}
+        except Exception as e:
+            self.load_errors.append(f"patterns.json: 读取失败 ({e})")
+            print(f"[钟馗] 警告: patterns.json 读取异常，降级为空字典继续运行 → 建议：检查文件权限或磁盘状态")
+            data = {}
 
         def _assemble(plist):
             return [re.compile(''.join(p['pieces']), re.IGNORECASE) for p in plist]
 
         def _assemble_labeled(plist):
-            return [(re.compile(''.join(p['pieces']), re.IGNORECASE), p.get('id', p.get('label', '')))
+            return [(re.compile(''.join(p['pieces']), re.IGNORECASE), p.get('label', p.get('id', '')))
                     for p in plist]
 
         # C1-C17
-        self.pat_C1 = _assemble_labeled(data['C1_injection'])
-        self.pat_C2 = _assemble(data['C2_indirect'])
-        self.pat_C3 = _assemble(data['C3_credentials'])
-        self.pat_C4 = _assemble_labeled(data['C4_exfiltration'])
-        self.pat_C5 = _assemble(data['C5_danger'])
-        self.pat_C6 = _assemble(data['C6_privilege'])
-        self.pat_C7 = _assemble(data['C7_persistence'])
-        self.pat_C8_chars = [(item['char'], item['hex']) for item in data['C8_unicode']]
-        self.pat_C9 = _assemble(data['C9_temporal'])
-        self.pat_C10 = _assemble(data['C10_obfuscation'])
-        self.pat_C12 = _assemble(data['C12_context'])
-        self.pat_C13 = _assemble(data['C13_output'])
-        self.pat_C14 = _assemble(data['C14_copyright'])
-        self.pat_C15 = _assemble(data['C15_roleplay'])
-        self.pat_C11_search = _assemble(data['C11_param_input'])
-        self.pat_C11_guard = _assemble(data['C11_param_guard'])
+        self.pat_C1 = _assemble_labeled(data.get('C1_injection', []))
+        self.pat_C2 = _assemble(data.get('C2_indirect', []))
+        self.pat_C3 = _assemble(data.get('C3_credentials', []))
+        self.pat_C4 = _assemble_labeled(data.get('C4_exfiltration', []))
+        self.pat_C5 = _assemble(data.get('C5_danger', []))
+        self.pat_C6 = _assemble(data.get('C6_privilege', []))
+        self.pat_C7 = _assemble(data.get('C7_persistence', []))
+        self.pat_C8_chars = [(item['char'], item['hex']) for item in data.get('C8_unicode', [])]
+        self.pat_C9 = _assemble(data.get('C9_temporal', []))
+        self.pat_C10 = _assemble(data.get('C10_obfuscation', []))
+        self.pat_C12 = _assemble(data.get('C12_context', []))
+        self.pat_C13 = _assemble(data.get('C13_output', []))
+        self.pat_C14 = _assemble(data.get('C14_copyright', []))
+        self.pat_C15 = _assemble(data.get('C15_roleplay', []))
+        self.pat_C11_search = _assemble(data.get('C11_param_input', []))
+        self.pat_C11_guard = _assemble(data.get('C11_param_guard', []))
         # S1-S12
-        self.pat_S1 = _assemble(data['S1_subprocess'])
-        self.pat_S2 = _assemble(data['S2_network'])
-        self.pat_S3 = _assemble(data['S3_sensitive_paths'])
-        self.pat_S4 = _assemble(data['S4_dynamic_exec'])
-        self.pat_S7 = _assemble(data['S7_permission'])
-        self.pat_S8 = _assemble(data['S8_registry'])
+        self.pat_S1 = _assemble(data.get('S1_subprocess', []))
+        self.pat_S2 = _assemble(data.get('S2_network', []))
+        self.pat_S3 = _assemble(data.get('S3_sensitive_paths', []))
+        self.pat_S4 = _assemble(data.get('S4_dynamic_exec', []))
+        self.pat_S7 = _assemble(data.get('S7_permission', []))
+        self.pat_S8 = _assemble(data.get('S8_registry', []))
+        # C16-C17: 外部引用 / 持久化配置
+        self.pat_C16_search = _assemble(data.get('C16_ext_ref', []))
+        self.pat_C16_verify = _assemble(data.get('C16_ext_verify', []))
+        self.pat_C17_search = _assemble(data.get('C17_min_version', []))
+        self.pat_C17_gate = _assemble(data.get('C17_confirm_gate', []))
         # Redlines
-        self.pat_redlines = _assemble_labeled(data['REDLINES'])
+        self.pat_redlines = _assemble_labeled(data.get('REDLINES', []))
 
     def run_full(self) -> 'Auditor':
         """执行完整 54 项静态审计"""
@@ -75,17 +97,35 @@ class Auditor:
         return self
 
     def _load_files(self):
-        """加载目标目录下所有可审计文本文件"""
+        """加载目标目录下所有可审计文本文件，返回 (files, errors)"""
+        errors = []
         for f in self.skill_path.rglob("*"):
             if f.name.startswith('.') and 'SKILL.md' not in f.name:
                 continue
+            if '.git' in f.parts:
+                continue
             if f.is_file() and f.suffix.lower() in {'.md', '.py', '.sh', '.js', '.json', '.yaml', '.yml', '.txt', '.bat', '.ps1'}:
+                rel = str(f.relative_to(self.skill_path))
                 try:
                     with open(f, 'r', encoding='utf-8', errors='ignore') as fh:
-                        rel = str(f.relative_to(self.skill_path))
                         self.files[rel] = fh.readlines()
-                except Exception:
-                    pass
+                except PermissionError:
+                    errors.append(f"{rel}: 权限不足，无法读取")
+                    print(f"[钟馗] 警告: 跳过 {rel}（权限不足）→ 建议：检查文件是否被其他程序独占打开，或尝试以管理员身份运行")
+                except UnicodeDecodeError:
+                    errors.append(f"{rel}: 编码异常，无法读取")
+                    print(f"[钟馗] 警告: 跳过 {rel}（编码异常）→ 建议：检查文件编码是否为 UTF-8，或使用记事本另存为 UTF-8")
+                except OSError as e:
+                    errors.append(f"{rel}: 系统 I/O 错误 ({e})")
+                    print(f"[钟馗] 警告: 跳过 {rel}（I/O 错误）→ 建议：检查磁盘是否有坏道或文件是否损坏")
+                except MemoryError:
+                    errors.append(f"{rel}: 文件过大，内存不足")
+                    print(f"[钟馗] 警告: 跳过 {rel}（文件过大）→ 建议：该文件可能不适合作为 skill 资源，考虑拆分为多个小文件")
+                except Exception as e:
+                    errors.append(f"{rel}: 未知错误 ({e})")
+                    print(f"[钟馗] 警告: 跳过 {rel}（未知错误: {e}）→ 建议：检查文件完整性，或手动排查该文件")
+        self.load_errors.extend(errors)
+        return errors
 
     def _check_metadata(self):
         """3.1 元数据检查 M1-M7"""
@@ -95,12 +135,12 @@ class Auditor:
 
         # M1: 发布者身份验证
         if not re.search(r'author:', full_text, re.IGNORECASE):
-            self.hits.append({"check": "M1", "risk": "R6", "points": 5, "file": skill_md,
+            self.hits.append({"check": "M1", "risk": "-", "points": 2, "file": skill_md,
                             "content": "无发布者身份声明", "line": 0, "flag": "publisher_unverified"})
 
         # M2: 版本号规范
         if not re.search(r'version:', full_text, re.IGNORECASE):
-            self.hits.append({"check": "M2", "risk": "R6", "points": 3, "file": skill_md,
+            self.hits.append({"check": "M2", "risk": "R4", "points": 2, "file": skill_md,
                             "content": "无版本号声明", "line": 0, "flag": "version_anomaly"})
 
         # M3: 依赖声明完整
@@ -108,22 +148,22 @@ class Auditor:
         has_deps_file = any(fn in self.files for fn in ['requirements.txt', 'package.json'])
         has_deps_decl = bool(re.search(r'dependencies|依赖|requirements', full_text, re.IGNORECASE))
         if py_files and not has_deps_file and not has_deps_decl:
-            self.hits.append({"check": "M3", "risk": "R4", "points": 3, "file": skill_md,
+            self.hits.append({"check": "M3", "risk": "R4", "points": 2, "file": skill_md,
                             "content": "有脚本但未声明依赖", "line": 0, "flag": "deps_undeclared"})
 
         # M4: 权限声明显式
         if not re.search(r'permission|权限|sandbox', full_text, re.IGNORECASE):
-            self.hits.append({"check": "M4", "risk": "R6", "points": 5, "file": skill_md,
+            self.hits.append({"check": "M4", "risk": "R6", "points": 2, "file": skill_md,
                             "content": "未声明所需权限", "line": 0, "flag": "permission_implicit"})
 
         # M5: 自述文件存在
         if 'README.md' not in self.files:
-            self.hits.append({"check": "M5", "risk": "-", "points": 5, "file": "README.md",
+            self.hits.append({"check": "M5", "risk": "-", "points": 2, "file": "README.md",
                             "content": "无 README 文件", "line": 0, "flag": "no_readme"})
 
         # M6: 数据声明完整
         if not re.search(r'数据.*收集|数据.*缓存|data.*collect|data.*policy|隐私|privacy', full_text, re.IGNORECASE):
-            self.hits.append({"check": "M6", "risk": "R9", "points": 3, "file": skill_md,
+            self.hits.append({"check": "M6", "risk": "-", "points": 2, "file": skill_md,
                             "content": "未声明数据处理策略", "line": 0, "flag": "data_policy_missing"})
 
         # M7: 合规声明存在
@@ -140,12 +180,16 @@ class Auditor:
         # C1: 直接提示注入模式（命中=一票否决）
         for pattern, label in self.pat_C1:
             for i, line in enumerate(lines):
+                if line.strip().startswith('|'):
+                    continue
                 if pattern.search(line):
                     self.veto_items.append({"rule": f"C1: {label}", "content": line.strip(),
                                             "file": skill_md, "line": i+1})
 
         # C2: 间接注入触发源
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C2:
                 if pat.search(line):
                     self.hits.append({"check": "C2", "risk": "R1", "points": 5, "file": skill_md,
@@ -153,20 +197,26 @@ class Auditor:
 
         # C3: 凭证访问模式
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C3:
                 if pat.search(line):
-                    self.hits.append({"check": "C3", "risk": "R3", "points": 8, "file": skill_md,
-                                    "content": line.strip(), "line": i+1, "flag": "credential_access"})
+                    self.veto_items.append({"rule": "C3: 凭证访问", "content": line.strip(),
+                                            "file": skill_md, "line": i+1})
 
         # C4: 数据外传目标
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat, desc in self.pat_C4:
                 if pat.search(line):
-                    self.hits.append({"check": "C4", "risk": "R5", "points": 8, "file": skill_md,
-                                    "content": f"{desc}: {line.strip()}", "line": i+1, "flag": "data_exfiltration_target"})
+                    self.veto_items.append({"rule": f"C4: {desc}", "content": line.strip(),
+                                            "file": skill_md, "line": i+1})
 
         # C5: 系统级危险命令（命中=一票否决）
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C5:
                 if pat.search(line):
                     self.veto_items.append({"rule": "C5: 系统危险命令", "content": line.strip(),
@@ -174,6 +224,8 @@ class Auditor:
 
         # C6: 权限提升指令
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C6:
                 if pat.search(line):
                     self.hits.append({"check": "C6", "risk": "R6", "points": 5, "file": skill_md,
@@ -181,6 +233,8 @@ class Auditor:
 
         # C7: 持久化写入路径（命中=一票否决）
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C7:
                 if pat.search(line):
                     self.veto_items.append({"rule": "C7: 持久化写入", "content": line.strip(),
@@ -196,6 +250,8 @@ class Auditor:
 
         # C9: 条件触发逻辑
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C9:
                 if pat.search(line):
                     self.hits.append({"check": "C9", "risk": "R8", "points": 5, "file": skill_md,
@@ -203,6 +259,8 @@ class Auditor:
 
         # C10: 混淆/编码内容
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C10:
                 if pat.search(line):
                     self.hits.append({"check": "C10", "risk": "R8", "points": 5, "file": skill_md,
@@ -217,13 +275,15 @@ class Auditor:
 
         # C12: 上下文污染源
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C12:
                 if pat.search(line):
                     self.hits.append({"check": "C12", "risk": "R1", "points": 3, "file": skill_md,
                                     "content": line.strip(), "line": i+1, "flag": "context_pollution_risk"})
 
         # C13: 输出安全风险
-        has_filter = bool(re.search(r'fil|.过|.滤|审核|modera', full_text))
+        has_filter = bool(re.search(r'\bfilter\b|.过|.滤|审核|modera', full_text))
         for i, line in enumerate(lines):
             for pat in self.pat_C13:
                 if pat.search(line) and not has_filter:
@@ -233,6 +293,8 @@ class Auditor:
 
         # C14: 版权复述风险
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C14:
                 if pat.search(line):
                     self.hits.append({"check": "C14", "risk": "R10", "points": 3, "file": skill_md,
@@ -240,10 +302,28 @@ class Auditor:
 
         # C15: 模型边界模糊
         for i, line in enumerate(lines):
+            if line.strip().startswith('|'):
+                continue
             for pat in self.pat_C15:
                 if pat.search(line):
                     self.hits.append({"check": "C15", "risk": "R1", "points": 3, "file": skill_md,
                                     "content": line.strip(), "line": i+1, "flag": "roleplay_override"})
+
+        # C16: 外部信息源引用无校验
+        has_external_ref = any(p.search(full_text) for p in self.pat_C16_search) if self.pat_C16_search else bool(re.search(r'fetch_url|https?://|web_fetch|url\s*[:=]', full_text))
+        has_source_verify = any(p.search(full_text) for p in self.pat_C16_verify) if self.pat_C16_verify else bool(re.search(r'cert.*pin|hash.*verify|content.*hash|HTTPS.*only|TLS.*verify|ssl_verify|verify_cert', full_text, re.IGNORECASE))
+        if has_external_ref and not has_source_verify:
+            self.hits.append({"check": "C16", "risk": "R11", "points": 3, "file": skill_md,
+                            "content": "有外部信息源引用但无校验机制(HTTPS强制/证书固定/内容哈希)", "line": 0,
+                            "flag": "unverified_external_source"})
+
+        # C17: 持久化配置写入无验证
+        has_persist_write = any(p.search(full_text) for p in self.pat_C17_search) if self.pat_C17_search else bool(re.search(r'write.*config|append.*bashrc|add.*startup|write.*profile|append.*profile|persist.*config', full_text, re.IGNORECASE))
+        has_confirm_gate = any(p.search(full_text) for p in self.pat_C17_gate) if self.pat_C17_gate else bool(re.search(r'confirm|确认|ask_user|user_consent|permission.*check', full_text, re.IGNORECASE))
+        if has_persist_write and not has_confirm_gate:
+            self.hits.append({"check": "C17", "risk": "R12", "points": 3, "file": skill_md,
+                            "content": "有持久化配置写入但无用户确认门控", "line": 0,
+                            "flag": "persistent_config_no_verify"})
 
     def _check_scripts(self):
         """3.3 辅助脚本检查 S1-S12"""
@@ -294,10 +374,10 @@ class Auditor:
             if fn in ['setup.py', 'install.sh']:
                 has_network = bool(re.search(r'requests|urllib|wg', full_text, re.IGNORECASE)
                                    or any(p.search(full_text) for p in self.pat_C2))
-                has_exec = bool(re.search(r'ex', full_text))
+                has_exec = bool(re.search(r'\bexec\b', full_text))
                 if has_network and has_exec:
-                    self.hits.append({"check": "S6", "risk": "R4", "points": 8, "file": fn,
-                                    "content": "安装脚本含网络下载+执行链", "line": 0, "flag": "suspicious_install"})
+                    self.veto_items.append({"rule": "S6: 安装脚本网络下载+执行链", "content": "安装脚本含网络下载+执行链",
+                                    "file": fn, "line": 0})
 
             # S7: 文件权限修改
             for i, line in enumerate(lines):
@@ -316,7 +396,7 @@ class Auditor:
             # S9: 文件上传逻辑
             has_read = bool(re.search(r'read_file|open', full_text))
             has_write = bool(re.search(r'write', full_text))
-            upload_keywords = bool(re.search(r'up', full_text, re.IGNORECASE))
+            upload_keywords = bool(re.search(r'\b(?:upload|up_file|file_transfer|multi.?part)\b', full_text, re.IGNORECASE))
             if (has_read and has_write) or upload_keywords:
                 self.hits.append({"check": "S9", "risk": "R4", "points": 5, "file": fn,
                                 "content": "含文件读写组合/上传逻辑", "line": 0, "flag": "unchecked_upload"})
@@ -336,8 +416,13 @@ class Auditor:
 
             # S12: 第三方 SDK 引入
             if fn.endswith(('.py', '.js')):
-                imports = re.findall(r'(?:import|from|require)\s+(\S+)', full_text)
+                imports = []
+                for m in re.finditer(r'(?:from\s+([\w.]+)\s+import|import\s+([\w.]+))', full_text):
+                    imports.append(m.group(1) or m.group(2))
                 for imp in imports:
+                    base = imp.split('.')[0]
+                    if base in self.PY_STDLIB:
+                        continue
                     if imp.startswith(('.', '..', '/', '~')):
                         continue
                     self.hits.append({"check": "S12", "risk": "R4", "points": 2, "file": fn,
@@ -349,15 +434,23 @@ class Auditor:
         lines = self.files.get(skill_md, [])
         full_text = "".join(lines)
 
-        has_permission_section = bool(re.search(r'权限|permission', full_text, re.IGNORECASE))
-        if not has_permission_section:
-            self.hits.append({"check": "P1-P7", "risk": "R6", "points": 10, "file": skill_md,
-                            "content": "无权限声明章节", "line": 0, "flag": "permissions_missing"})
-            for check_id, flag in [("P8", "no_tenant_isolation"), ("P9", "no_resource_quota"),
-                                     ("P10", "no_timeout_control"), ("P11", "no_chain_integrity")]:
+        # P1-P7: 逐项检查权限声明（不依赖权限章节是否存在）
+        p1_p7_checks = [
+            ("P1", r'文件.*系统|filesystem|file.*system', "无文件系统访问权限声明"),
+            ("P2", r'网络.*访问|network|联网', "无网络访问权限声明"),
+            ("P3", r'进程|process|\bexec\b', "无进程执行权限声明"),
+            ("P4", r'shell|cmd|terminal|command', "无命令执行权限声明"),
+            ("P5", r'读取|read|open', "无文件读取权限声明"),
+            ("P6", r'写入|write|修改|modify', "无文件写入权限声明"),
+            ("P7", r'删除|delete|移除|remove', "无文件删除权限声明"),
+        ]
+        for check_id, pattern, desc in p1_p7_checks:
+            if not re.search(pattern, full_text, re.IGNORECASE):
                 self.hits.append({"check": check_id, "risk": "R6", "points": 2, "file": skill_md,
-                                "content": f"无{check_id}声明（无权限章节）", "line": 0, "flag": flag})
-        else:
+                                "content": desc, "line": 0, "flag": f"perm_{check_id.lower()}_missing"})
+
+        has_permission_section = bool(re.search(r'权限|permission', full_text, re.IGNORECASE))
+        if has_permission_section:
             if not re.search(r'隔离|isolation|tenant', full_text):
                 self.hits.append({"check": "P8", "risk": "R9", "points": 3, "file": skill_md,
                                 "content": "无租户/用户数据隔离声明", "line": 0, "flag": "no_tenant_isolation"})
@@ -397,23 +490,40 @@ class Auditor:
         n_issues = len(self.hits)
         n_veto = len(self.veto_items)
         n_redline = len(self.get_redline_hits())
+        n_load_err = len(self.load_errors)
+        parts = []
         if n_veto > 0:
-            self.summary = f"命中 {n_veto} 个一票否决项，{n_issues} 个常规问题"
+            parts.append(f"命中 {n_veto} 个一票否决项，{n_issues} 个常规问题")
         elif n_redline > 0:
-            self.summary = f"命中 {n_redline} 条即时拒绝红线，{n_issues} 个常规问题"
+            parts.append(f"命中 {n_redline} 条即时拒绝红线，{n_issues} 个常规问题")
         elif n_issues > 0:
-            self.summary = f"发现 {n_issues} 个安全问题，无高危项"
+            parts.append(f"发现 {n_issues} 个安全问题，无高危项")
         else:
-            self.summary = "未发现安全问题，审查通过"
+            parts.append("未发现安全问题，审查通过")
+        if n_load_err > 0:
+            parts.append(f"{n_load_err} 个文件读取失败")
+        self.summary = "；".join(parts)
 
     def get_veto_hits(self) -> list:
         return self.veto_items
 
     def get_redline_hits(self) -> list:
-        """检查所有文件中的 17 条即时拒绝红线"""
+        """检查所有文件中的 18 条即时拒绝红线
+        
+        自审豁免：跳过 zhongkui 自身的 patterns.json（特征库）和 references/（参考文档），
+        避免审计工具自身的知识库/特征库被误判为攻击载荷。
+        """
         redline_items = []
         for fn, lines in self.files.items():
+            # 自审豁免：跳过特征库和参考文档
+            basename = Path(fn).name
+            if basename == 'patterns.json':
+                continue
+            if 'references' in Path(fn).parts:
+                continue
             for i, line in enumerate(lines):
+                if line.strip().startswith('|'):
+                    continue
                 for pat, desc in self.pat_redlines:
                     if pat.search(line):
                         redline_items.append({"rule": desc, "content": line.strip()[:60],
@@ -425,7 +535,7 @@ class Auditor:
 
     def get_stats(self) -> dict:
         files_scanned = len(self.files)
-        checks_total = 52
+        checks_total = 54 - self.checks_skipped
         checks_hit = len(set(h['check'] for h in self.hits))
         checks_pass = checks_total - checks_hit
         return {

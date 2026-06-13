@@ -133,3 +133,47 @@ python zhongkui.py E:\skills\some-skill --quick
 
 v2.0.0 — 54 项检查 / 21 场景 / 10 维溯源 / 17 条红线
 *（内容由AI生成，仅供参考）*
+
+
+---
+
+## 常见问题速查
+
+> 以下按问题列出 FAQ 答案在各文档中的位置，避免翻来翻去。
+
+| 问题 | 文档 | 位置 |
+|------|------|------|
+| 为什么我的 Skill 被判 R8？ | SKILL.md | "反模式与常见陷阱 → 常见疑问" 章节 |
+| 为什么我的 Skill 被判 R8？ | QUICKSTART.md | "常见问题" 章节 |
+| 误报怎么办？ | SKILL.md | "反模式与常见陷阱 → 常见疑问" 章节 |
+| 误报怎么办？ | QUICKSTART.md | "常见问题" 章节 |
+| 审查多久？（各层耗时） | SKILL.md | "反模式与常见陷阱 → 常见疑问" 章节 |
+| 审查多久？（各层耗时） | QUICKSTART.md | "常见问题" 章节 |
+| 钟馗审不了什么？（能力边界） | SKILL.md | "能力边界" 章节（详细列表） |
+| 钟馗审不了什么？（能力边界） | QUICKSTART.md | "常见问题" 章节（简版） |
+| 钟馗审不了什么？（能力边界） | references/capability-boundaries.md | 全文（各层精度盲区+检出率） |
+| 脚本和对话审查有什么区别？ | QUICKSTART.md | "常见问题" 章节 |
+| 黄标为什么有 high/low 之分？ | QUICKSTART.md | "常见问题" 章节 |
+| 黄标裁定阈值与处理 | references/scoring.md | "裁定阈值 → 黄标细化处理" 章节 |
+| 审完后文件编码报错怎么办？ | QUICKSTART.md | "常见问题" 章节 |
+| 审完后文件编码报错怎么办？ | references/error-handling.md | "异常分类与处理 → 编码异常" 章节 |
+| 审查中断了怎么办？ | QUICKSTART.md | "常见问题" 章节 |
+| 审查中断了怎么办？ | references/error-handling.md | 全文（含各类异常处理） |
+| 能审多个 Skill 吗？（批量审查） | QUICKSTART.md | "常见问题" 章节 |
+| 评分是怎么算的？ | references/scoring.md | "评分公式" 章节 |
+| 一票否决有哪些？ | SKILL.md | "风险速查" 表格（一票否决列） |
+| 一票否决有哪些？ | references/scoring.md | "一票否决项" 章节（6 项详表） |
+| 即时红线有哪些？ | SKILL.md | "即时拒绝红线" 表格（17 条） |
+| 即时红线有哪些？ | references/trust-hierarchy.md | "即时拒绝红线" 表格（17 条） |
+| 红线体系是什么？ | SKILL.md | "即时拒绝红线" + "风险速查" 章节 |
+| 如何修复被扣分的项目？ | references/fix-strategies.md | 全文（11 类风险修复方法） |
+| 各层审查精度如何？（检出率/误报率） | references/capability-boundaries.md | "精度声明总结" 表格 |
+| 审查方法论依据是什么？ | references/agent-skill-security-review.md | 全文（14 篇论文支撑） |
+| 漏洞库如何更新？ | SKILL.md | "漏洞库更新" 章节 |
+| 漏洞库如何更新？ | references/threat-intel-pipeline.md | 全文（自动摄入 → 签名生成） |
+| 三种审查模式的区别？ | SKILL.md | "快速指令" 表格（审/快审/审依赖/审行为） |
+| 三种审查模式的区别？ | QUICKSTART.md | "基本用法" 五个场景 |
+| 信任层级是什么？ | references/trust-hierarchy.md | 全文（5 级信任层级表） |
+| 各阶段开发状态？ | references/roadmap.md | 全文（Phase 1-4） |
+| 常见审查陷阱有哪些？ | SKILL.md | "反模式与常见陷阱" 章节（6 个陷阱） |
+

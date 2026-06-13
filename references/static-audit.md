@@ -56,7 +56,7 @@
 | S2 | 网络出站 | `socket\|requests\.(get\|post)\|urllib\|http\.client\|fetch.*http` | -4 | R5 | — |
 | S3 | 敏感路径读写 | `/etc/passwd\|C:\\\\Windows\|~/.ssh\|/root/` | -4 | R2 | — |
 | S4 | 动态代码执行 | `eval\(\|exec\(\|compile\(` | -4 | R2 | — |
-| S5 | 依赖 CVE | 与 CVE DB 交叉比对命中的依赖 | -4 | R4 | — |
+| S5 | 依赖 CVE | 与 CVE DB 交叉比对命中的依赖 | -2 | R4 | — |
 | S6 | 安装脚本恶意行为 | `curl.*\|.*bash` 或 `wget.*\|.*sh` 链式执行模式 | -10 | R2 | ✅ |
 | S7 | 文件权限修改 | `chmod\|chown\|icacls\|Set-Acl` | -4 | R6 | — |
 | S8 | 配置篡改 | `reg add\|regedit\|Set-ItemProperty\|defaults write` | -4 | R7 | — |
