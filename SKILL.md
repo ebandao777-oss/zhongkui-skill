@@ -1,12 +1,7 @@
 ---
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: f114db32c8f49bbd4c4c544cd9de808d_ab3b73d3673011f1a0095254002afed2
-    ReservedCode1: 0ITiRw3qN2Y8ZpqsG9giXY3uGOiBq6KD58PzX/o6B9mn0epBf6tGZCPzYoaXxS6kamzTu7dZNFIcHQQpeoDrKN66BDPnf69xQF2xR3xw1uQWbZOggR+if0LEmCKEOEhnXHkRROPPn6oucGWL00pz7sUgLizXM1MjCZnuiqywwYmv4VqR3OH19bmuw3U=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: f114db32c8f49bbd4c4c544cd9de808d_ab3b73d3673011f1a0095254002afed2
-    ReservedCode2: 0ITiRw3qN2Y8ZpqsG9giXY3uGOiBq6KD58PzX/o6B9mn0epBf6tGZCPzYoaXxS6kamzTu7dZNFIcHQQpeoDrKN66BDPnf69xQF2xR3xw1uQWbZOggR+if0LEmCKEOEhnXHkRROPPn6oucGWL00pz7sUgLizXM1MjCZnuiqywwYmv4VqR3OH19bmuw3U=
+name: zhongkui-skill
+description: 钟馗.Skill——会更新漏洞库的安全审查专家。直来直去、快刀斩乱麻，三层审查（静态审计/行为模拟/供应链溯源）覆盖12类风险，输出结构化安全裁定（✅干净/⚠️可疑/🚫恶意）。Use when 用户说"审查这个Skill"、"安全检查"、"钟馗看下"、"审一下"、"查一下这个skill"、安装Skill前的安全评估、或需要审计SKILL.md的恶意载荷。
+version: ""
 ---
 
 
