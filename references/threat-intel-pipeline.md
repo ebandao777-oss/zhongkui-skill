@@ -26,22 +26,26 @@
 
 LLM/Agent 相关 CWE 映射表：
 
-| CWE | 名称 | 对应钟馗风险 |
+| CWE | 名称 | 对应钟馗分区（patterns.json） |
 |-----|------|-------------|
-| CWE-94 | Code Injection | R1, R11 |
-| CWE-74 | Improper Neutralization | R1/R11 |
-| CWE-20 | Improper Input Validation | R1 |
-| CWE-427 | Uncontrolled Search Path | R4 |
-| CWE-494 | Download Without Integrity Check | R4 |
-| CWE-918 | SSRF | R10 |
-| CWE-200 | Exposure of Sensitive Info | R2 |
-| CWE-668 | Exposure to Wrong Sphere | R7 |
+| CWE-94 | Code Injection | C1_injection |
+| CWE-74 | Improper Neutralization | C1_injection |
+| CWE-20 | Improper Input Validation | C1_injection |
+| CWE-427 | Uncontrolled Search Path | S3_sensitive_paths |
+| CWE-494 | Download Without Integrity Check | S3_sensitive_paths |
+| CWE-918 | SSRF | S2_network |
+| CWE-200 | Exposure of Sensitive Info | C4_exfiltration |
+| CWE-668 | Exposure to Wrong Sphere | C1_injection |
 
-#### 1.1.2 Snyk 漏洞数据库 — CVSS v3.1
+> 上表与 `core/intel/updater.py` 的 `CWE_CATEGORY_MAP` 完全一致，CVE 按此路由注入对应 patterns.json 分区。
+
+#### 1.1.2 Snyk 漏洞数据库 — CVSS v3.1（规划中，当前未实现）
 
 | 项目 | 端点 | 置信度 |
 |------|------|--------|
 | Snyk V1 API | `GET https://api.snyk.io/v1/vulns`（需 Enterprise Token） | CVSS v3.1 score |
+
+> **状态说明**：Snyk V1 API 为规划中的摄入源，当前 `core/intel/updater.py` 未实现 `fetch_snyk`，`run_update` 仅调用 NVD + Seebug 双源（见 §7 状态表）。
 
 #### 1.1.3 Seebug 漏洞库
 
@@ -64,7 +68,7 @@ Seebug 离散映射值收紧至 {0.8, 0.5, 0.2}，避免三档离散值过度挤
 | 源 | 频率 | 窗口 | 每次量 | 置信度类型 | 归一化 |
 |----|------|------|--------|-----------|--------|
 | NVD REST API | 每日 | 过去 7 天 | CRITICAL/HIGH CVE | CVSS v3.1 | score/10 -> [0,1] |
-| Snyk V1 API | 每日 | 过去 1 天（增量） | 新增漏洞 | CVSS v3.1 | score/10 -> [0,1] |
+| Snyk V1 API（规划中，未实现） | 每日 | 过去 1 天（增量） | 新增漏洞 | CVSS v3.1 | score/10 -> [0,1] |
 | Seebug RSS | 每日 | 过去 1 天（增量） | 新条目 | severity 高/中/低 | {0.8, 0.5, 0.2} -> [0,1] |
 
 #### 1.1.6 覆盖盲区与补救

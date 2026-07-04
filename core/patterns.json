@@ -809,6 +809,10 @@
       "source": "manual"
     }
   ],
+  "C16_ext_ref": [],
+  "C16_ext_verify": [],
+  "C17_min_version": [],
+  "C17_confirm_gate": [],
   "S1_subprocess": [
     {
       "id": "S1_001",

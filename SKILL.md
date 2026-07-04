@@ -3,6 +3,14 @@ name: zhongkui-skill
 description: 钟馗.Skill——会更新漏洞库的安全审查专家。直来直去、快刀斩乱麻，三层审查（静态审计/行为模拟/供应链溯源）覆盖12类风险，输出结构化安全裁定（✅干净/⚠️可疑/🚫恶意）。Use when 用户说"审查这个Skill"、"安全检查"、"钟馗看下"、"审一下"、"查一下这个skill"、安装Skill前的安全评估、或需要审计SKILL.md的恶意载荷。
 version: "1.0.12"
 author: "智慧半岛"
+license: MIT
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Shell
+  - Edit
+  - Write
 ---
 <!--
 分级加载导航（Agent 按需读取深度）：
@@ -86,7 +94,12 @@ python zhongkui.py --update --dry-run # 仅预览，不注入
 
 ## [L2] 评分与裁定
 
-按 [references/scoring.md](references/scoring.md) 公式计算总分，输出三值裁定。数据安全维度独立计入（W3=0.1），见评分与裁定文件。
+按 [references/scoring.md](references/scoring.md) 公式计算总分，输出三值裁定。权重随 Layer 2 是否产出可量化分数自动切换：
+
+- **完整路径（W1=0.35 / W2=0.55 / W3=0.10）**：传入 `l2_score` 时启用。
+- **离线默认路径（W1=0.85 / W3=0.15，W2 缺省置 0）**：`l2_score` 未传入时启用，亦为 `zhongkui.py` 默认调用路径。
+
+详见评分与裁定文件中的"路径 A / 路径 B"章节。
 
 | 裁定 | 条件 | 处理 |
 |:---|:---|:---|
@@ -205,3 +218,5 @@ python zhongkui.py --update --dry-run # 仅预览，不注入
 - [信任层级](references/trust-hierarchy.md) — 按来源分级审查力度
 - [异常处理策略](references/error-handling.md) — 编码/网络/解析异常的处理标准和降级链
 - [能力边界](references/capability-boundaries.md) — 各层审查精度上限与已知盲区
+- [落地路线图](references/roadmap.md) — Phase 1-3 演进规划与里程碑
+- [论文映射表](references/paper-mapping.md) — 方案模块与对应论文的借鉴关系

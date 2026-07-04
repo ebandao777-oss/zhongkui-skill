@@ -84,40 +84,44 @@ def fetch_nvd(days: int = 7, verify_ssl: bool = True) -> List[Dict[str, Any]]:
     """
     end = datetime.now(tz=datetime.timezone.utc)
     start = end - timedelta(days=days)
-    url = (
-        "https://services.nvd.nist.gov/rest/json/cves/2.0"
-        f"?pubStartDate={start.strftime('%Y-%m-%dT%H:%M:%S.000')}"
-        f"&pubEndDate={end.strftime('%Y-%m-%dT%H:%M:%S.000')}"
-        "&cvssV3Severity=CRITICAL&resultsPerPage=50"
-    )
+    # NVD API 2.0 cvssV3Severity 仅支持单值，需对 CRITICAL 和 HIGH 分别请求后合并
+    severity_levels = ["CRITICAL", "HIGH"]
     results = []
     error = None
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Zhongkui/1.0"})
-        if verify_ssl:
-            response = urllib.request.urlopen(req, timeout=30)
-        else:
-            ctx = ssl._create_unverified_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            response = urllib.request.urlopen(req, timeout=30, context=ctx)
-        if response.status != 200:
-            return [], f"HTTP {response.status}"
-        data = json.loads(response.read())
-        for vuln in data.get("vulnerabilities", []):
-            cve = vuln.get("cve", {})
-            cve_id = cve.get("id", "")
-            desc = _get_cve_description(cve)
-            cwes = _get_cwe_list(cve)
-            cvss = _get_cvss_score(cve)
-            results.append({
-                "id": cve_id,
-                "description": desc,
-                "cwes": cwes,
-                "cvss": cvss,
-                "source": "NVD",
-            })
-        # 限速由调用方控制，不再内联 sleep
+        for severity in severity_levels:
+            url = (
+                "https://services.nvd.nist.gov/rest/json/cves/2.0"
+                f"?pubStartDate={start.strftime('%Y-%m-%dT%H:%M:%S.000')}"
+                f"&pubEndDate={end.strftime('%Y-%m-%dT%H:%M:%S.000')}"
+                f"&cvssV3Severity={severity}&resultsPerPage=50"
+            )
+            req = urllib.request.Request(url, headers={"User-Agent": "Zhongkui/1.0"})
+            if verify_ssl:
+                response = urllib.request.urlopen(req, timeout=30)
+            else:
+                ctx = ssl._create_unverified_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                response = urllib.request.urlopen(req, timeout=30, context=ctx)
+            if response.status != 200:
+                # 单 severity 失败时跳过，继续下一个 severity，避免整个函数中断
+                continue
+            data = json.loads(response.read())
+            for vuln in data.get("vulnerabilities", []):
+                cve = vuln.get("cve", {})
+                cve_id = cve.get("id", "")
+                desc = _get_cve_description(cve)
+                cwes = _get_cwe_list(cve)
+                cvss = _get_cvss_score(cve)
+                results.append({
+                    "id": cve_id,
+                    "description": desc,
+                    "cwes": cwes,
+                    "cvss": cvss,
+                    "source": "NVD",
+                })
+            # 限速由调用方控制，不再内联 sleep
     except Exception as e:
         error = str(e)
     return results, error
@@ -417,7 +421,7 @@ def update_patterns_json(new_patterns: List[Dict], dry_run: bool = False) -> Dic
             if isinstance(data[cat], list) and (cat.startswith("C") or cat.startswith("S") or cat.startswith("D")):
                 for p in data[cat]:
                     if isinstance(p, dict):
-                        if p.get("source", "manual").split("-")[0] in ("NVD", "Seebug"):
+                        if p.get("source", "manual").startswith(("NVD-", "Seebug-")):
                             auto_count += 1
                         else:
                             manual_count += 1
@@ -444,7 +448,7 @@ def _bump_version(version: str) -> str:
 # ── 增量清理 ──────────────────────────────────────────
 
 def _clean_auto_patterns(data: dict) -> int:
-    """剥离旧的自动生成签名（source 以 nvd-/seebug- 开头），保留基础库（source=manual）。"""
+    """剥离旧的自动生成签名（source 以 NVD-/Seebug- 开头），保留基础库（source=manual）。"""
     removed = 0
     for cat in list(data.keys()):
         if not (cat.startswith("C") or cat.startswith("S") or cat.startswith("D")):
@@ -452,7 +456,7 @@ def _clean_auto_patterns(data: dict) -> int:
         before = len(data[cat])
         data[cat] = [
             p for p in data[cat]
-            if not (isinstance(p, dict) and p.get("source", "manual").split("-")[0] in ("NVD", "Seebug"))
+            if not (isinstance(p, dict) and p.get("source", "manual").startswith(("NVD-", "Seebug-")))
         ]
         removed += before - len(data[cat])
     return removed
